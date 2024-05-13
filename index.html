@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>World Map</title>
+    <link rel="stylesheet" href="./assets/css/style.css" />
+    <link rel="stylesheet" href="./dist/css/jsvectormap.css" />
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .content {
+            flex: 1;
+        }
+        .hidden-input {
+            display: none;
+        }
+        .navbar-brand {
+            animation: bounce;
+            animation-duration: 2s;
+            animation-iteration-count: infinite;
+        }
+        .workspace-wrapper {
+            animation: fadeIn;
+            animation-duration: 1s;
+        }
+        .footer {
+            animation: slideInUp;
+            animation-duration: 1s;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <script src="/dist/js/jsvectormap.js"></script>
+    <script src="./src/maps/world-merc.js"></script>
+</head>
+<body>
+<div class="wrapper">
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <a class="navbar-brand animate__animated animate__bounce">Tweets World Map</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a href="All-posts.html" class="btn btn-info" role="button">All Posts</a>
+                        <a href="index.html" class="btn btn-success" role="button">World Map</a>
+                        <a href="report.html" class="btn btn-success" role="button">Report</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+    <div class="content">
+        <div class="workspace-wrapper animate__animated">
+            <div id="map"></div>
+        </div>
+    </div>
+    <footer class="footer mt-auto py-3 bg-dark text-white animate__animated">
+        <div class="container text-center">
+            <label for="csvFileInput" class="text-muted" style="cursor: pointer;">Sentilysis</label>
+            <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
+        </div>
+    </footer>
+</div>
+
+<script>
+    var markers = [
+        { name: "Russia", coords: [61, 105] },
+        { name: "Greenland", coords: [72, -42] },
+        { name: "Canada", coords: [56.1304, -106.3468] },
+        { name: "Palestine", coords: [31.5, 34.8] },
+        { name: "Brazil", coords: [-14.235, -51.9253] },
+    ];
+
+    var map;
+    var countryData = {};
+
+    async function fetchCSVData() {
+        const response = await fetch('./data/labeled_tweets.csv');
+        const csvData = await response.text();
+        return csvData;
+    }
+
+    async function processCSVData() {
+        const csvData = await fetchCSVData();
+        const rows = csvData.split('\n');
+
+        rows.forEach(row => {
+            const columns = row.split(',');
+            const location = columns[1] ? columns[1].trim().toLowerCase() : '';
+            const sentiment = columns[2];
+
+            if (location) {
+                if (!countryData[location]) {
+                    countryData[location] = {
+                        positive: 0,
+                        negative: 0
+                    };
+                }
+                countryData[location][sentiment]++;
+            }
+        });
+
+        console.log("Processed country data:", countryData);
+        initializeMap();
+    }
+
+    function initializeMap() {
+        map = new jsVectorMap({
+            map: "world_merc",
+            selector: document.querySelector("#map"),
+            zoomButtons: false,
+            regionsSelectable: true,
+            markersSelectable: true,
+            markersSelectableOne: true,
+            labels: {
+                markers: {
+                    render: function (marker) {
+                        return marker.name;
+                    },
+                },
+            },
+            markers: markers,
+            markerStyle: { initial: { fill: "#66F" } },
+            onLoaded: function (map) {
+                var regions = map.regions;
+                Object.keys(regions).forEach(function (key) {
+                    regions[key].element.shape.node.id = key.toLowerCase() + "-color";
+                });
+            },
+            onRegionTooltipShow: function (event, tooltip, index) {
+                var regionData = map.regions[index];
+                var countryName = regionData.config.name.toLowerCase().trim(); 
+                console.log("Country hovered: " + countryName);
+
+                const tooltipText = getTooltipText(countryName, countryData);
+                const { positive, negative } = countryData[countryName] || { positive: 0, negative: 0 };
+                const tooltipColor = positive > negative ? 'green' : (negative > positive ? 'red' : 'gray');
+
+                tooltip
+                    .css({
+                        backgroundColor: tooltipColor,
+                        color: "white",
+                        fontSize: "16px",
+                        padding: "10px"
+                    })
+                    .text(tooltipText);
+            },
+            onMarkerSelected: function (code, isSelected, selectedMarkers) {
+                console.log("Marker selected: " + code, isSelected, selectedMarkers);
+            },
+            onMarkerTooltipShow: function (event, tooltip, code) {
+                tooltip.text(tooltip.text() + " Marker");
+            },
+        });
+    }
+
+    function getTooltipText(countryName, countryData) {
+        console.log('Country name (lowercase):', countryName);
+        console.log('Country data:', countryData);
+        console.log('Country data:', countryData[countryName]);
+
+        if (countryData[countryName]) {
+            const { positive, negative } = countryData[countryName];
+            const totalTweets = positive + negative;
+            const sentiment = positive > negative ? 'Positive' : (negative > positive ? 'Negative' : 'Neutral');
+            return `${countryName}: ${totalTweets} tweets, ${sentiment} sentiment`;
+        } else {
+            return `${countryName}: Data not available`;
+        }
+    }
+
+    window.addEventListener('load', processCSVData);
+
+    const csvFileInput = document.getElementById('csvFileInput');
+    csvFileInput.addEventListener('change', handleFileUpload);
+
+    function handleFileUpload(event) {
+        const file = event.target.files[0];
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+            const csvData = e.target.result;
+            saveCSVData(csvData);
+
+            location.reload();
+        };
+
+        reader.readAsText(file);
+    }
+
+    function saveCSVData(csvData) {
+        const blob = new Blob([csvData], { type: 'text/csv' });
+
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'labeled_tweets.csv';
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+</script>
+</body>
+</html>

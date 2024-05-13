@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Sentiment Analysis Report</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        padding-top: 60px;
+      }
+      .navbar {
+        background-color: #343a40;
+      }
+      .navbar-brand {
+        color: white;
+      }
+      .nav-link {
+        color: white;
+        transition: color 0.3s;
+      }
+      .nav-link:hover {
+        color: #ffc107;
+      }
+      .dropdown-menu {
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .report-container {
+        margin-top: 30px;
+      }
+      .chart-container {
+        width: 100%;
+        height: 400px;
+        margin-top: 30px;
+      }
+      .total-tweets {
+        font-size: 24px;
+        font-weight: bold;
+        margin-top: 20px;
+        opacity: 0;
+        animation: fadeIn 1s ease-in-out forwards;
+      }
+      @keyframes fadeIn {
+        0% {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <a class="navbar-brand animate__animated animate__bounce" href="#">Sentiment Analysis Report</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-toggle="collapse"
+          data-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ml-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="All-posts.html">All Posts</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="index.html">World Map</a>
+            </li>
+            <li class="nav-item active">
+              <a class="nav-link" href="report.html">Report</a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+    </header>
+
+    <div class="container report-container">
+      <div class="row">
+        <div class="col-md-4">
+          <div class="form-group">
+            <label for="countryDropdown">Select a country:</label>
+            <select class="form-control" id="countryDropdown"></select>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12">
+          <div id="reportResults"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12">
+          <div class="chart-container">
+            <canvas id="sentimentChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-12">
+          <div class="total-tweets animate__animated" id="totalTweets"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let chart;
+
+      fetch('./data/labeled_tweets.csv')
+        .then(response => response.text())
+        .then(csvData => {
+          const rows = csvData.split('\n');
+          const countryData = {};
+          const countryList = [];
+          let totalTweets = 0;
+
+          rows.forEach(row => {
+            const columns = row.split(',');
+            const location = columns[1] ? columns[1].trim() : '';
+            const sentiment = columns[2];
+
+            if (location) {
+              if (!countryData[location]) {
+                countryData[location] = {
+                  positive: 0,
+                  negative: 0,
+                  total: 0
+                };
+                countryList.push(location);
+              }
+              countryData[location][sentiment]++;
+              countryData[location].total++;
+              totalTweets++;
+            }
+          });
+
+          const countryDropdown = document.getElementById('countryDropdown');
+          countryList.forEach(country => {
+            const option = document.createElement('option');
+            option.value = country;
+            option.text = country;
+            countryDropdown.appendChild(option);
+          });
+
+          const totalTweetsElement = document.getElementById('totalTweets');
+          totalTweetsElement.textContent = `Total Tweets (All Countries): ${totalTweets}`;
+
+          countryDropdown.addEventListener('change', function() {
+            const selectedCountry = this.value;
+            const countryStats = countryData[selectedCountry];
+
+            if (countryStats) {
+              const reportResults = document.getElementById('reportResults');
+              reportResults.innerHTML = `
+                <h2 class="animate__animated animate__fadeIn">${selectedCountry}</h2>
+                <p class="animate__animated animate__fadeInUp">Total Tweets: ${countryStats.total}</p>
+                <p class="animate__animated animate__fadeInUp">Positive Tweets: ${countryStats.positive}</p>
+                <p class="animate__animated animate__fadeInUp">Negative Tweets: ${countryStats.negative}</p>
+              `;
+
+              if (chart) {
+                chart.data.datasets[0].data = [countryStats.positive, countryStats.negative];
+                chart.update();
+              } else {
+                const ctx = document.getElementById('sentimentChart').getContext('2d');
+                chart = new Chart(ctx, {
+                  type: 'bar',
+                  data: {
+                    labels: ['Positive', 'Negative'],
+                    datasets: [{
+                      label: 'Sentiment',
+                      data: [countryStats.positive, countryStats.negative],
+                      backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(255, 99, 132, 0.6)']
+                    }]
+                  },
+                  options: {
+                    scales: {
+                      y: {
+                        beginAtZero: true,
+                        stepSize: 1
+                      }
+                    },
+                    animation: {
+                      duration: 1000,
+                      easing: 'easeInOutQuad'
+                    }
+                  }
+                });
+              }
+            }
+          });
+        });
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  </body>
+</html>

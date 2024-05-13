@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Posts</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    html,
+    body {
+      height: 100%;
+    }
+    .content {
+      flex: 1 0 auto;
+    }
+  </style>
+</head>
+<body class="d-flex flex-column">
+  <header>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <a class="navbar-brand" href="#">Predicted Tweets Sentiments</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item">
+            <button class="btn btn-info" onclick="selectCSVFile()">All Posts</button>
+            <a href="index.html" class="btn btn-success" role="button">World Map</a>
+            <a href="report.html" class="btn btn-success" role="button">Report</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+  </header>
+
+  <div class="content">
+    <div class="container">
+      <div class="mt-4">
+        <label for="country-filter">Filter by Country:</label>
+        <select id="country-filter" class="form-control" onchange="filterByCountry()">
+          <option value="">All</option>
+        </select>
+      </div>
+      <table class="table mt-4">
+        <thead class="thead-dark">
+          <tr>
+            <th>User Id</th>
+            <th>User Location</th>
+            <th>Date</th>
+            <th>Tweet Text</th>
+            <th>Predicted Sentiment</th>
+          </tr>
+        </thead>
+        <tbody id="tweet-list">
+          <!-- Table rows will be inserted here -->
+        </tbody>
+      </table>
+      <div class="text-center mt-4">
+        <button class="btn btn-secondary mr-2" onclick="prevPage()">Previous</button>
+        <button class="btn btn-secondary" onclick="nextPage()">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer py-3 bg-dark text-white">
+    <div class="container text-center">
+      <span class="text-muted">Sentilysis</span>
+    </div>
+  </footer>
+
+
+  <!-- Bootstrap JS (optional) -->
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+  <script>
+    let currentPage = 1;
+    let itemsPerPage = 10; // Change this value to adjust the number of items per page
+    let data = [];
+    let totalPages = 0;
+
+    function populateCountryDropdown() {
+      let select = document.getElementById("country-filter");
+      let uniqueCountries = [...new Set(data.map(item => item["user_location"]))];
+      uniqueCountries.sort(); // Sort countries alphabetically
+      select.innerHTML = ""; // Clear existing options
+      
+      // Add "All" option
+      let allOption = document.createElement("option");
+      allOption.value = "";
+      allOption.textContent = "All";
+      select.appendChild(allOption);
+      
+      // Add options for each country
+      uniqueCountries.forEach(country => {
+        let option = document.createElement("option");
+        option.value = country;
+        option.textContent = country || "N/A"; // Use "N/A" for empty values
+        select.appendChild(option);
+      });
+    }
+
+    // Call populateCountryDropdown when the page loads
+    window.onload = populateCountryDropdown;
+
+    function filterByCountry() {
+      let select = document.getElementById("country-filter");
+      let selectedCountry = select.value;
+      let filteredData;
+
+      if (selectedCountry === "") {
+        // If "All" is selected, display all data
+        filteredData = data;
+      } else {
+        // Filter data based on selected country
+        filteredData = data.filter(item => item["user_location"] === selectedCountry);
+      }
+
+      // Update the displayed data
+      currentPage = 1; // Reset to the first page
+      totalPages = Math.ceil(filteredData.length / itemsPerPage);
+      displayData(filteredData);
+    }
+
+    function selectCSVFile() {
+      let fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = '.csv';
+
+      fileInput.onchange = function() {
+        let file = fileInput.files[0];
+        let reader = new FileReader();
+
+        reader.onload = function(event) {
+          let csv = event.target.result;
+          processData(csv);
+          displayData(data);
+          populateCountryDropdown(); // Populate the country dropdown with updated data
+        };
+
+        reader.readAsText(file);
+      };
+
+      fileInput.click();
+    }
+
+    function processData(csv) {
+  let lines = csv.split('\n');
+  let headers = lines[0].split(',');
+
+  data = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    let currentLine = lines[i].split(',');
+    let item = {};
+
+    for (let j = 0; j < headers.length; j++) {
+      // Check if the current column exists and has a value
+      if (currentLine[j] !== undefined && currentLine[j].trim() !== '') {
+        item[headers[j]] = currentLine[j];
+      }
+    }
+    const val=" negative ";
+    if (Object.keys(item).length == 5) {
+
+let sentiment = item[Object.keys(item)[4]];
+if (Object.keys(item).length == 5) {
+console.log(sentiment.length);
+if (sentiment && sentiment.length === 9 &&
+    sentiment[0] === 'n' &&
+    sentiment[1] === 'e' &&
+    sentiment[2] === 'g' &&
+    sentiment[3] === 'a' &&
+    sentiment[4] === 't' &&
+    sentiment[5] === 'i' &&
+    sentiment[6] === 'v' &&
+    sentiment[7] === 'e') {
+    // Check if the item has at least one property (non-empty column)
+   console.log("hereee");
+   data.push(item);
+}
+      }}
+      
+    
+    if (item[Object.keys(item)[4]] === undefined && item[Object.keys(item)[4]] === val) {
+      console.log("Hello");
+      continue;
+    }
+
+  }
+
+  totalPages = Math.ceil(data.length / itemsPerPage);
+}
+
+   
+
+    function displayData(dataToDisplay) {
+      let tweetList = document.getElementById('tweet-list');
+      tweetList.innerHTML = '';
+
+      let startIndex = (currentPage - 1) * itemsPerPage;
+      let endIndex = startIndex + itemsPerPage;
+      let paginatedData = dataToDisplay.slice(startIndex, endIndex);
+
+      for (let i = 0; i < paginatedData.length; i++) {
+        let item = paginatedData[i];
+        let row = document.createElement('tr');
+
+        for (let key in item) {
+          let cell = document.createElement('td');
+          cell.className = 'align-middle'; // Center align content vertically
+          if (key === 'user_location') {
+            cell.textContent = item[key] || 'N/A';
+          } else {
+            cell.textContent = item[key];
+          }
+          row.appendChild(cell);
+        }
+
+        tweetList.appendChild(row);
+      }
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        displayData(data);
+      }
+    }
+
+    function nextPage() {
+      if (currentPage < totalPages) {
+        currentPage++;
+        displayData(data);
+      }
+    }
+  </script>
+</body>
+</html>
